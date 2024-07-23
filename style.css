@@ -59,3 +59,11 @@ header h1, footer p {
 .news-link:hover {
     text-decoration: underline;
 }
+
+/* Novo estilo para ajustar o tamanho das imagens */
+.news-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin-bottom: 10px;
+}

@@ -1,44 +1,78 @@
 // script.js
 
 document.addEventListener('DOMContentLoaded', function () {
-    const apiKey = '2173cc2620004da492133deba42d240c';
     const newsContainer = document.getElementById('news-list');
+    const proxyUrl = 'http://localhost:3000/proxy?url=';
+    const targetUrl = 'https://g1.globo.com/rss/g1/';
 
-    // Função para buscar notícias da API
+    // Função para buscar notícias do G1
     async function getNews() {
         try {
-            const response = await fetch(`https://newsapi.org/v2/top-headlines?sources=bbc-news&apiKey=${apiKey}`);
-            const data = await response.json();
+            const response = await fetch(proxyUrl + encodeURIComponent(targetUrl));
+            const data = await response.text();
 
-            // Limpa o conteúdo anterior
-            newsContainer.innerHTML = '';
+            // Log do conteúdo da resposta
+            console.log('Conteúdo da resposta:', data);
 
-            // Itera sobre os artigos e exibe na página
-            data.articles.forEach(article => {
-                const newsItem = document.createElement('div');
-                newsItem.classList.add('news-item');
+            // Verifica se o conteúdo é XML
+            if (data.startsWith('<?xml')) {
+                // Parseia o XML
+                const parser = new DOMParser();
+                const xml = parser.parseFromString(data, "text/xml");
 
-                const title = document.createElement('h2');
-                title.classList.add('news-title');
-                title.textContent = article.title;
+                // Verifica se o XML foi parseado corretamente
+                if (xml.documentElement.nodeName === "parsererror") {
+                    throw new Error('Erro ao parsear o XML');
+                }
 
-                const description = document.createElement('p');
-                description.classList.add('news-description');
-                description.textContent = article.description;
+                // Limpa o conteúdo anterior
+                newsContainer.innerHTML = '';
 
-                const link = document.createElement('a');
-                link.classList.add('news-link');
-                link.textContent = 'Leia mais';
-                link.href = article.url;
-                link.target = '_blank'; // Abre o link em uma nova aba
+                // Itera sobre os itens do feed e exibe na página
+                const items = xml.querySelectorAll('item');
+                items.forEach(item => {
+                    const newsItem = document.createElement('div');
+                    newsItem.classList.add('news-item');
 
-                newsItem.appendChild(title);
-                newsItem.appendChild(description);
-                newsItem.appendChild(link);
+                    const title = document.createElement('h2');
+                    title.classList.add('news-title');
+                    title.textContent = item.querySelector('title').textContent;
 
-                newsContainer.appendChild(newsItem);
-            });
+                    let descriptionContent = item.querySelector('description').textContent;
+                    let tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = descriptionContent;
 
+                    // Extrai a imagem, se existir
+                    const imgTag = tempDiv.querySelector('img');
+                    if (imgTag) {
+                        const img = document.createElement('img');
+                        img.src = imgTag.src;
+                        img.classList.add('news-image');
+                        newsItem.appendChild(img);
+                    }
+
+                    // Extrai o texto da descrição
+                    let descriptionText = tempDiv.textContent || tempDiv.innerText || '';
+
+                    const description = document.createElement('p');
+                    description.classList.add('news-description');
+                    description.textContent = descriptionText;
+
+                    const link = document.createElement('a');
+                    link.classList.add('news-link');
+                    link.textContent = 'Leia mais';
+                    link.href = item.querySelector('link').textContent;
+                    link.target = '_blank'; // Abre o link em uma nova aba
+
+                    newsItem.appendChild(title);
+                    newsItem.appendChild(description);
+                    newsItem.appendChild(link);
+
+                    newsContainer.appendChild(newsItem);
+                });
+            } else {
+                throw new Error('A resposta não é XML');
+            }
         } catch (error) {
             console.error('Erro ao buscar notícias:', error);
         }
@@ -47,5 +81,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // Chama a função para buscar notícias quando a página carregar
     getNews();
 });
+
 const anoAtual = new Date().getFullYear();
 document.getElementById('ano-atual').textContent = anoAtual;
